@@ -50,3 +50,93 @@ for filename in books:
         
         json.dump(my_dict, fd, indent=4, ensure_ascii=False)
 
+
+import nltk
+from nltk.stem import SnowballStemmer
+
+stemmer = SnowballStemmer("romanian")
+
+books = []
+
+for filename in os.listdir(dataDir):
+    if filename.endswith('.json'):
+        books.append(filename)
+
+book_info = {}
+
+for filename in books:
+    with open(os.path.join(dataDir,filename), 'r', encoding="iso8859_2") as fd:
+        book_info = json.load(fd)
+    
+
+    training_data = []
+
+    for fragment_id in book_info.keys():
+        training_data.append({"id" : fragment_id, "fragment" : book_info[fragment_id]})
+
+    #print ("%s fragments in training data" % len(training_data))
+
+    words = []
+    ids = []
+    documents = []
+    ignore_words = ['?', ',', '.', '!', ':', ';', '-']
+    # loop through each fragment in our training data
+    for pattern in training_data:
+        # tokenize each word in the fragment
+        w = nltk.word_tokenize(pattern['fragment'])
+        # add to our words list
+        words.extend(w)
+        # add to documents in our corpus
+        documents.append((w, pattern['id']))
+        # add to our ids list
+        if pattern['id'] not in ids:
+            ids.append(pattern['id'])
+
+    # stem and lower each word and remove duplicates
+    words = [stemmer.stem(w.lower()) for w in words if w not in ignore_words]
+    words = list(set(words))
+
+    # remove duplicates
+    ids = list(set(ids))
+
+    #print (len(documents), "documents")
+    #print (len(ids), "ids", ids)
+    #print (len(words), "unique stemmed words", words)
+
+
+    # create our training data
+    training = []
+    output = []
+    # create an empty array for our output
+    output_empty = [0] * len(ids)
+
+    # training set, bag of words for each sentence
+    for doc in documents:
+        # initialize our bag of words
+        bag = []
+        # list of tokenized words for the pattern
+        pattern_words = doc[0]
+        # stem each word
+        pattern_words = [stemmer.stem(word.lower()) for word in pattern_words]
+        # create our bag of words array
+        for w in words:
+            bag.append(1) if w in pattern_words else bag.append(0)
+
+        training.append(bag)
+        # output is a '0' for each tag and '1' for current tag
+        output_row = list(output_empty)
+        output_row[ids.index(doc[1])] = 1
+        output.append(output_row)
+
+    #print ("# words", len(words))
+    #print ("# ids", len(ids))
+
+    import json
+
+    with open(os.path.join(dataDir,filename + "training.txt"),"w") as f:
+        f.write(json.dumps(training))
+    with open(os.path.join(dataDir,filename + "output.txt"),"w") as f:
+        f.write(json.dumps(output))
+    with open(os.path.join(dataDir,filename+ "words.txt"),"w") as f:
+        f.write(json.dumps(words)) 
+
