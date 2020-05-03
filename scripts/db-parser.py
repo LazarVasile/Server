@@ -1,8 +1,15 @@
+#pentru parsare fisiere din db / carti
+
 import os
 import json
 import fnmatch
 from input_parser import input_parser
+from nltk import tokenize
 from textwrap import wrap
+
+from cube.api import Cube
+cube = Cube(verbose=True)
+cube.load('ro')
 
 booksDir = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(__file__),'../../DB')))
 dataDir = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(__file__),'../data')))
@@ -16,35 +23,35 @@ for filename in os.listdir(booksDir):
         break
 
 for filename in books:
-    book_content = open(os.path.join(booksDir,filename),encoding="iso8859_2").read()
+    book_content = open(os.path.join(booksDir,filename),encoding="utf-8").read()
 
     if os.path.exists(os.path.join(dataDir,filename.replace('.txt','') + ".json")):
-        os.remove(os.path.join(dataDir,filename.replace('.txt','') + ".json"))
+        #os.remove(os.path.join(dataDir,filename.replace('.txt','') + ".json"))
+        continue
     
-    with open(os.path.join(dataDir,filename.replace('.txt','') + ".json"), 'w', encoding="iso8859_2") as fd:
+    with open(os.path.join(dataDir,filename.replace('.txt','') + ".json"), 'w', encoding="utf-8") as fd:
         my_dict = {}
         i = 1
 
-        propozitii = book_content.split('.')
-        k = 0
+        propozitii = tokenize.sent_tokenize(book_content)
 
-        while k < len(propozitii):
-            try:
-                cuvinte_fragment = 0 #cuvinte in fragmentul curent
-                fragment = ""
-                
-                while cuvinte_fragment < 150 and k < len(propozitii):
-                    cuvinte = propozitii[k].split(' ') #cuvinte in propozitia k
-                    cuvinte_fragment += len(cuvinte) #adaugam propozitia in fragment
-                    fragment += propozitii[k]
-                    k += 1    #adaugam propozitii in fragment pana ajungem la 150 de cuvinte
-                
-                my_dict[i] = fragment
-                i += 1
-            except:
-                pass
+        for propozitie in propozitii:
+            my_dict[i] = propozitie
+            sentences = cube(propozitie)
+            lemmas = []
+            for sentence in sentences:
+                for entry in sentence:
+                    lemmas.append(entry.lemma)
+            my_dict[str(i)+"_l"] = lemmas
+            print("DONE " + str(i) + " / " + str(len(propozitii)))
+            i += 1
+        
 
         json.dump(my_dict, fd, indent=4, ensure_ascii=False)
+    
+    print("\n")
+    print("DONE " + filename)
+    print("\n")
     
 """ 
 books = []

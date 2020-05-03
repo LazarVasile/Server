@@ -26,12 +26,14 @@ def train_neural_networks():
         if os.path.exists(os.path.join(dataDir,filename.replace(".json", '_') + "model.yaml")):
             continue
 
-        with open(os.path.join(dataDir,filename),"r", encoding="iso8859_2") as f:
+        with open(os.path.join(dataDir,filename),"r", encoding="utf-8") as f:
             book_info = json.load(f)
         
+        keys = [key for key in book_info.keys() if "l" not in key]
+
         training_data = []
 
-        for fragment_id in book_info.keys():
+        for fragment_id in keys:
             training_data.append({"id" : fragment_id, "fragment" : book_info[fragment_id]})
 
         #print ("%s fragments in training data" % len(training_data))
@@ -43,7 +45,8 @@ def train_neural_networks():
         # loop through each fragment in our training data
         for pattern in training_data:
             # parse each word in the fragment
-            w = input_parser(pattern['fragment'])
+            #w = input_parser(pattern['fragment'])
+            w = book_info[pattern['id'] + "_l"]
             # add to our words list
             words.extend(w)
             # add to documents in our corpus
@@ -102,7 +105,7 @@ def train_neural_networks():
 
         model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-        model.fit(x, y, epochs=100)
+        model.fit(x, y, epochs=700)
 
         scores = model.evaluate(x, y, verbose=0)
         #print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -116,7 +119,7 @@ def train_neural_networks():
         # serialize weights to HDF5
         model.save_weights(os.path.join(dataDir,filename.replace(".json",'_') + "model.h5"))
 
-        with open(os.path.join(dataDir,filename.replace(".json",'_') + "words.txt"),"w",encoding="iso8859_2") as f:
+        with open(os.path.join(dataDir,filename.replace(".json",'_') + "words.txt"),"w",encoding="utf-8") as f:
             f.write(json.dumps(words))
 
         print("Saved model to disk")
@@ -138,6 +141,9 @@ def train_neural_networks():
 
 import time
 
-while True:
+nr_carti = 0
+
+while nr_carti < 100:
     train_neural_networks()
     time.sleep(4)
+    nr_carti += 1
